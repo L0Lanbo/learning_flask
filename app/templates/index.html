@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {% if current_user.is_authenticated %}
+    <h1>Hello, {{ current_user.username }}!!</h1>
+    {% else %}
+    <h1>Hello, 请登录!!(正常情况下不会出现此提示，因为主页已经屏蔽匿名用户访问)</h1>
+    {% endif %}
+    {% for post in posts %}
+    <div><p>{{ post.author.username }} say: <b>{{ post.body }}</b></p></div>
+    {% endfor %}
+{% endblock %}
