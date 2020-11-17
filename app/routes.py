@@ -97,10 +97,11 @@ def user(username):
 	        ]
 	return render_template('user.html', title='My profile', user=user, posts=posts)
 
+@app.route('/edit_profile', methods=['GET', 'POST'])
+@login_required
 def edit_profile():
 	form = EditProfileForm()
 	if form.validate_on_submit():
-		cu
 
 @app.before_request
 def before_request():
