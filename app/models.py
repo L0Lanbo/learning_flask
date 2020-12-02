@@ -5,6 +5,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from hashlib import md5
 
+
+followers = db.Table('followers',
+    db.Column('follower_id', db.Integer, db.ForeignKey('user.id')),
+    db.Column('followed_id', db.Integer, db.ForeignKey('user.id'))
+)
+
 class User(UserMixin, db.Model):
 	"""
 	user表
@@ -19,8 +25,17 @@ class User(UserMixin, db.Model):
 	username = db.Column(db.String(64), index=True, unique=True)
 	email = db.Column(db.String(120), index=True, unique=True)
 	password_hash = db.Column(db.String(128))
+	posts = db.relationship('Post', backref='author', lazy='dynamic')
 	about_me = db.Column(db.String(140))
 	last_seen = db.Column(db.DateTime, default=datetime.utcnow)#DateTime.UtcNow获取的是世界标准时区的当前时间
+	followed = db.relationship(
+		'User', secondary=followers,
+		primaryjoin=(followers.c.follower_id == id),
+		secondaryjoin=(followers.c.followed_id == id),
+		backref=db.backref('followers', lazy='dynamic'), 
+		lazy='dynamic'
+		)
+
 
 	def __repr__(self):
 		"""用于在调试时打印用户实例"""
@@ -39,6 +54,17 @@ class User(UserMixin, db.Model):
 		digest = md5(self.email.lower().encode('utf-8')).hexdigest()
 		return 'https://gravatar.loli.net/avatar/{}?d=identicon&s={}'.format(digest, size)
 
+	def follow(self, user):
+		if not self.is_following(user):
+			self.followed.append(user)
+
+	def unfollow(self, user):
+		if self.is_following(user):
+			self.followed.remove(user)
+
+	def is_following(self, user):
+		return self.followed.filter(followers.c.followed_id == user.id).count() > 0
+
 
 class Post(db.Model):
 	"""
@@ -46,7 +72,7 @@ class Post(db.Model):
 	id 主键
 	body 具体内容字段
 	timestamp 时间戳字段
-	user_id 外键，关联sser表的id字段
+	user_id 外键，关联user表的id字段
 	"""
 	id = db.Column(db.Integer, primary_key=True)
 	body = db.Column(db.String(140))
@@ -55,6 +81,7 @@ class Post(db.Model):
 
 	def __repr__(self):
 		return '<Post {}>'.format(self.body)
+
 
 
 @login.user_loader
