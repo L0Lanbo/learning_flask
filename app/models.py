@@ -29,7 +29,8 @@ class User(UserMixin, db.Model):
 	about_me = db.Column(db.String(140))
 	last_seen = db.Column(db.DateTime, default=datetime.utcnow)#DateTime.UtcNow获取的是世界标准时区的当前时间
 	followed = db.relationship(
-		'User', secondary=followers,
+		'User', 
+		secondary=followers,
 		primaryjoin=(followers.c.follower_id == id),
 		secondaryjoin=(followers.c.followed_id == id),
 		backref=db.backref('followers', lazy='dynamic'), 
@@ -55,15 +56,36 @@ class User(UserMixin, db.Model):
 		return 'https://gravatar.loli.net/avatar/{}?d=identicon&s={}'.format(digest, size)
 
 	def follow(self, user):
+		"""关注"""
 		if not self.is_following(user):
 			self.followed.append(user)
 
 	def unfollow(self, user):
+		"""取消关注"""
 		if self.is_following(user):
 			self.followed.remove(user)
 
 	def is_following(self, user):
+		"""查看是否关注"""
 		return self.followed.filter(followers.c.followed_id == user.id).count() > 0
+
+	def followed_posts(self):
+		"""
+		应用主页中需要展示已登录用户关注的其他所有用户的动态
+		"""
+		"""
+		#方法1：
+		return Post.query.join(
+			followers,followers.c.followed_id==user_id).filter(
+			self.id==followers.follower_id).order_by(
+			Post.timestamp.desc())
+		"""
+		#方法2：
+		followed = Post.query.join(
+				followers, (followers.c.followed_id == Post.user_id)).filter(
+				followers.c.follower_id == self.id)
+		own = Post.query.filter_by(user_id=self.id)
+		return followed.union(own).order_by(Post.timestamp.desc())
 
 
 class Post(db.Model):
